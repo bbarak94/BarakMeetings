@@ -1,35 +1,51 @@
 services:
   # Backend API
   - type: web
-    name: booking-api
+    name: barakmeetings-api
     runtime: docker
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
+    plan: free
+    healthCheckPath: /health
     envVars:
       - key: ASPNETCORE_ENVIRONMENT
         value: Production
+      # Secrets - set these in Render Dashboard
       - key: ConnectionStrings__DefaultConnection
-        value: Host=ep-divine-flower-ah9vb8is-pooler.c-3.us-east-1.aws.neon.tech;Database=neondb;Username=neondb_owner;Password=npg_1m0FGLYPqRle;SSL Mode=Require
+        sync: false
       - key: Jwt__Secret
-        value: CHANGE_THIS_TO_A_SECURE_SECRET_KEY_IN_PRODUCTION_MIN_32_CHARS
-      - key: Jwt__Issuer
-        value: BookingPlatform
-      - key: Jwt__Audience
-        value: BookingPlatformClients
-      - key: Jwt__ExpirationMinutes
-        value: "60"
-    healthCheckPath: /api/health
+        sync: false
+      - key: Email__SmtpUser
+        sync: false
+      - key: Email__SmtpPassword
+        sync: false
+      # Email config (non-secret)
+      - key: Email__SmtpHost
+        value: smtp.gmail.com
+      - key: Email__SmtpPort
+        value: "587"
+      - key: Email__FromEmail
+        sync: false
+      - key: Email__FromName
+        value: BarakMeetings
+      - key: Email__EnableSsl
+        value: "true"
+      - key: Email__IsEnabled
+        value: "true"
+      # CORS - will update after frontend deploys
+      - key: Cors__AllowedOrigins__0
+        sync: false
 
-  # Frontend
-  - type: web
-    name: booking-frontend
-    runtime: static
+# Static Sites are separate from services
+staticSites:
+  - name: barakmeetings-app
     buildCommand: npm ci && npm run build
-    staticPublishPath: ./dist
+    publishPath: ./dist
     rootDir: ./frontend
+    plan: free
     envVars:
       - key: VITE_API_URL
-        value: https://booking-api.onrender.com/api
+        sync: false
     routes:
       - type: rewrite
         source: /*
