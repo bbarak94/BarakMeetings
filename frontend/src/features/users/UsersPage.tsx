@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Loader2, User, Shield, X, UserCheck, UserX, Mail, RefreshCw, Trash2, Clock, Copy, Check, Link } from 'lucide-react';
+import { Plus, Loader2, User, Shield, X, UserCheck, UserX, Mail, RefreshCw, Trash2, Clock } from 'lucide-react';
 import { Button, Card, CardContent, CardHeader, CardTitle, Input } from '../../components/ui';
 import { usersApi, type InviteUserRequest, type InvitationDto, TenantRole, TenantRoleLabels, type TenantRoleType } from '../../api/users';
 import { useAuthStore } from '../../stores/authStore';
@@ -28,8 +28,6 @@ export function UsersPage() {
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
   const [newRole, setNewRole] = useState<TenantRoleType | null>(null);
   const [inviteSent, setInviteSent] = useState(false);
-  const [invitationLink, setInvitationLink] = useState<string | null>(null);
-  const [linkCopied, setLinkCopied] = useState(false);
 
   const { data: users, isLoading } = useQuery({
     queryKey: ['tenant-users'],
@@ -43,13 +41,9 @@ export function UsersPage() {
 
   const inviteMutation = useMutation({
     mutationFn: (data: InviteUserRequest) => usersApi.invite(data),
-    onSuccess: (data) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pending-invitations'] });
       setInviteSent(true);
-      // If email is disabled, the invitation link is returned for manual sharing
-      if (data.invitationLink) {
-        setInvitationLink(data.invitationLink);
-      }
     },
   });
 
@@ -95,26 +89,6 @@ export function UsersPage() {
     setIsInviteModalOpen(false);
     setInviteForm(defaultInviteForm);
     setInviteSent(false);
-    setInvitationLink(null);
-    setLinkCopied(false);
-  };
-
-  const copyToClipboard = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setLinkCopied(true);
-      setTimeout(() => setLinkCopied(false), 2000);
-    } catch {
-      // Fallback for older browsers
-      const textarea = document.createElement('textarea');
-      textarea.value = text;
-      document.body.appendChild(textarea);
-      textarea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textarea);
-      setLinkCopied(true);
-      setTimeout(() => setLinkCopied(false), 2000);
-    }
   };
 
   const handleInvite = (e: React.FormEvent) => {
@@ -454,67 +428,21 @@ export function UsersPage() {
               {inviteSent ? (
                 <div className="text-center py-4">
                   <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    {invitationLink ? (
-                      <Link className="h-8 w-8 text-green-600" />
-                    ) : (
-                      <Mail className="h-8 w-8 text-green-600" />
-                    )}
+                    <Mail className="h-8 w-8 text-green-600" />
                   </div>
                   <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                    {invitationLink ? 'Invitation Created!' : 'Invitation Sent!'}
+                    Invitation Sent!
                   </h3>
-                  {invitationLink ? (
-                    <>
-                      <p className="text-gray-600 dark:text-gray-400 mb-4">
-                        Email is disabled in development mode. Share this link with <strong>{inviteForm.email}</strong>:
-                      </p>
-                      <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-3 mb-4">
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="text"
-                            readOnly
-                            value={invitationLink}
-                            className="flex-1 bg-transparent text-sm text-gray-700 dark:text-gray-300 border-none outline-none truncate"
-                          />
-                          <Button
-                            size="sm"
-                            variant={linkCopied ? 'default' : 'outline'}
-                            onClick={() => copyToClipboard(invitationLink)}
-                          >
-                            {linkCopied ? (
-                              <>
-                                <Check className="h-4 w-4 mr-1" />
-                                Copied!
-                              </>
-                            ) : (
-                              <>
-                                <Copy className="h-4 w-4 mr-1" />
-                                Copy
-                              </>
-                            )}
-                          </Button>
-                        </div>
-                      </div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-                        The invitation will expire in 7 days.
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <p className="text-gray-600 dark:text-gray-400 mb-4">
-                        An email has been sent to <strong>{inviteForm.email}</strong> with instructions to join your team.
-                      </p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-                        The invitation will expire in 7 days.
-                      </p>
-                    </>
-                  )}
+                  <p className="text-gray-600 dark:text-gray-400 mb-4">
+                    An email has been sent to <strong>{inviteForm.email}</strong> with instructions to join your team.
+                  </p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+                    The invitation will expire in 7 days.
+                  </p>
                   <div className="flex justify-center gap-2">
                     <Button variant="outline" onClick={() => {
                       setInviteForm(defaultInviteForm);
                       setInviteSent(false);
-                      setInvitationLink(null);
-                      setLinkCopied(false);
                     }}>
                       Invite Another
                     </Button>
