@@ -1,0 +1,69 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: booking-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: BookingPlatform_Dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Backend API
+  api:
+    build:
+      context: ../backend
+      dockerfile: ../docker/Dockerfile.api
+    container_name: booking-api
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:5000
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=BookingPlatform_Dev;Username=postgres;Password=postgres
+    ports:
+      - "5001:5000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Frontend (Dev Server)
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: ../docker/Dockerfile.frontend
+    container_name: booking-frontend
+    environment:
+      - VITE_API_URL=http://localhost:5001/api
+    ports:
+      - "5173:5173"
+    volumes:
+      - ../frontend:/app
+      - /app/node_modules
+    depends_on:
+      - api
+
+  # Seq (Log Aggregation) - Optional
+  seq:
+    image: datalust/seq:latest
+    container_name: booking-seq
+    environment:
+      - ACCEPT_EULA=Y
+    ports:
+      - "5341:80"
+    volumes:
+      - seq_data:/data
+
+volumes:
+  postgres_data:
+  seq_data:
+
+networks:
+  default:
+    name: booking-network
