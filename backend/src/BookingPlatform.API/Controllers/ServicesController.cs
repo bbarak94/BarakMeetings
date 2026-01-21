@@ -23,10 +23,15 @@ public class ServicesController : ControllerBase
 
     [HttpGet]
     [AllowAnonymous]
-    public async Task<ActionResult<List<ServiceDto>>> GetServices()
+    public async Task<ActionResult<List<ServiceDto>>> GetServices([FromQuery] Guid? tenantId = null)
     {
+        // Use provided tenantId for public booking, otherwise use authenticated tenant
+        var effectiveTenantId = tenantId ?? _tenantService.TenantId;
+        if (!effectiveTenantId.HasValue)
+            return BadRequest("Tenant not specified");
+
         var services = await _context.Services
-            .Where(s => s.IsActive)
+            .Where(s => s.TenantId == effectiveTenantId.Value && s.IsActive)
             .OrderBy(s => s.SortOrder)
             .Select(s => new ServiceDto
             {
@@ -47,8 +52,12 @@ public class ServicesController : ControllerBase
     [HttpGet("{id}")]
     public async Task<ActionResult<ServiceDto>> GetService(Guid id)
     {
+        var tenantId = _tenantService.TenantId;
+        if (!tenantId.HasValue)
+            return BadRequest("Tenant not specified");
+
         var service = await _context.Services
-            .Where(s => s.Id == id)
+            .Where(s => s.Id == id && s.TenantId == tenantId.Value)
             .Select(s => new ServiceDto
             {
                 Id = s.Id,
@@ -109,7 +118,12 @@ public class ServicesController : ControllerBase
     [HttpPut("{id}")]
     public async Task<ActionResult> UpdateService(Guid id, [FromBody] UpdateServiceRequest request)
     {
-        var service = await _context.Services.FindAsync(id);
+        var tenantId = _tenantService.TenantId;
+        if (!tenantId.HasValue)
+            return BadRequest("Tenant not specified");
+
+        var service = await _context.Services
+            .FirstOrDefaultAsync(s => s.Id == id && s.TenantId == tenantId.Value);
         if (service == null)
             return NotFound();
 
@@ -129,7 +143,12 @@ public class ServicesController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<ActionResult> DeleteService(Guid id)
     {
-        var service = await _context.Services.FindAsync(id);
+        var tenantId = _tenantService.TenantId;
+        if (!tenantId.HasValue)
+            return BadRequest("Tenant not specified");
+
+        var service = await _context.Services
+            .FirstOrDefaultAsync(s => s.Id == id && s.TenantId == tenantId.Value);
         if (service == null)
             return NotFound();
 

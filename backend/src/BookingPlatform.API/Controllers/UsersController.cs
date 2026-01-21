@@ -136,6 +136,7 @@ public class UsersController : ControllerBase
     /// Send an invitation email to a new staff member
     /// </summary>
     [HttpPost("invite")]
+    [Authorize(Roles = "Owner,Admin")]
     public async Task<ActionResult<InvitationDto>> InviteUser([FromBody] InviteUserRequest request)
     {
         var tenantId = _tenantService.TenantId;
@@ -243,6 +244,7 @@ public class UsersController : ControllerBase
     /// Resend an invitation email
     /// </summary>
     [HttpPost("invitations/{id}/resend")]
+    [Authorize(Roles = "Owner,Admin")]
     public async Task<ActionResult> ResendInvitation(Guid id)
     {
         var tenantId = _tenantService.TenantId;
@@ -287,6 +289,7 @@ public class UsersController : ControllerBase
     /// Cancel/delete a pending invitation
     /// </summary>
     [HttpDelete("invitations/{id}")]
+    [Authorize(Roles = "Owner,Admin")]
     public async Task<ActionResult> CancelInvitation(Guid id)
     {
         var tenantId = _tenantService.TenantId;
@@ -314,6 +317,7 @@ public class UsersController : ControllerBase
     /// Update a user's role in the tenant
     /// </summary>
     [HttpPut("{id}/role")]
+    [Authorize(Roles = "Owner,Admin")]
     public async Task<ActionResult> UpdateUserRole(Guid id, [FromBody] UpdateRoleRequest request)
     {
         var tenantId = _tenantService.TenantId;
@@ -348,6 +352,7 @@ public class UsersController : ControllerBase
     /// Deactivate a user from the tenant
     /// </summary>
     [HttpDelete("{id}")]
+    [Authorize(Roles = "Owner,Admin")]
     public async Task<ActionResult> DeactivateUser(Guid id)
     {
         var tenantId = _tenantService.TenantId;

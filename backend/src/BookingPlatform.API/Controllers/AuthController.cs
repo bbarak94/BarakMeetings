@@ -49,6 +49,9 @@ public class AuthController : ControllerBase
         var accessToken = _jwtService.GenerateAccessToken(user, tenantId, role);
         var refreshToken = _jwtService.GenerateRefreshToken();
 
+        // Update last login time
+        user.LastLoginAtUtc = DateTime.UtcNow;
+
         // Save refresh token
         var refreshTokenEntity = new RefreshToken
         {

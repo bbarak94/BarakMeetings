@@ -31,8 +31,13 @@ public class ClientsController : ControllerBase
         [FromQuery] string? search = null,
         [FromQuery] bool? activeOnly = true)
     {
+        var tenantId = _tenantService.TenantId;
+        if (!tenantId.HasValue)
+            return BadRequest("Tenant not specified");
+
         var query = _context.Clients
             .Include(c => c.Appointments)
+            .Where(c => c.TenantId == tenantId.Value) // CRITICAL: Filter by tenant
             .AsQueryable();
 
         if (activeOnly == true)
@@ -79,9 +84,13 @@ public class ClientsController : ControllerBase
     [HttpGet("{id}")]
     public async Task<ActionResult<ClientDto>> GetClient(Guid id)
     {
+        var tenantId = _tenantService.TenantId;
+        if (!tenantId.HasValue)
+            return BadRequest("Tenant not specified");
+
         var client = await _context.Clients
             .Include(c => c.Appointments)
-            .Where(c => c.Id == id)
+            .Where(c => c.Id == id && c.TenantId == tenantId.Value) // CRITICAL: Filter by tenant
             .Select(c => new ClientDto
             {
                 Id = c.Id,
@@ -119,7 +128,7 @@ public class ClientsController : ControllerBase
 
         // Check if email already exists for this tenant
         var existingClient = await _context.Clients
-            .FirstOrDefaultAsync(c => c.Email == request.Email);
+            .FirstOrDefaultAsync(c => c.Email == request.Email && c.TenantId == tenantId.Value);
 
         if (existingClient != null)
             return BadRequest("A client with this email already exists");
@@ -160,7 +169,12 @@ public class ClientsController : ControllerBase
     [HttpPut("{id}")]
     public async Task<ActionResult> UpdateClient(Guid id, [FromBody] UpdateClientRequest request)
     {
-        var client = await _context.Clients.FindAsync(id);
+        var tenantId = _tenantService.TenantId;
+        if (!tenantId.HasValue)
+            return BadRequest("Tenant not specified");
+
+        var client = await _context.Clients
+            .FirstOrDefaultAsync(c => c.Id == id && c.TenantId == tenantId.Value);
         if (client == null)
             return NotFound();
 
@@ -179,7 +193,12 @@ public class ClientsController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<ActionResult> DeleteClient(Guid id)
     {
-        var client = await _context.Clients.FindAsync(id);
+        var tenantId = _tenantService.TenantId;
+        if (!tenantId.HasValue)
+            return BadRequest("Tenant not specified");
+
+        var client = await _context.Clients
+            .FirstOrDefaultAsync(c => c.Id == id && c.TenantId == tenantId.Value);
         if (client == null)
             return NotFound();
 
@@ -193,6 +212,16 @@ public class ClientsController : ControllerBase
     [HttpGet("{id}/appointments")]
     public async Task<ActionResult<List<ClientAppointmentDto>>> GetClientAppointments(Guid id)
     {
+        var tenantId = _tenantService.TenantId;
+        if (!tenantId.HasValue)
+            return BadRequest("Tenant not specified");
+
+        // First verify client belongs to tenant
+        var clientExists = await _context.Clients
+            .AnyAsync(c => c.Id == id && c.TenantId == tenantId.Value);
+        if (!clientExists)
+            return NotFound();
+
         var appointments = await _context.Appointments
             .Include(a => a.Service)
             .Include(a => a.StaffMember)

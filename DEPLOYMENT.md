@@ -135,8 +135,8 @@ https://barakmeetings-app.onrender.com
 ```
 
 ### Login
-- **Email:** `admin@demo.com`
-- **Password:** `Admin123!`
+- **Email:** `admin@fitstudio.demo`
+- **Password:** `Demo123!`
 
 ### Test Invitation Flow
 1. Go to Team Members
@@ -176,7 +176,7 @@ https://barakmeetings-app.onrender.com
 
 | Role | Email | Password |
 |------|-------|----------|
-| **Owner** | admin@demo.com | Admin123! |
+| **Owner** | admin@fitstudio.demo | Demo123! |
 | **Staff** | sarah@fitstudio.demo | Demo123! |
 | **Staff** | mike@fitstudio.demo | Demo123! |
 

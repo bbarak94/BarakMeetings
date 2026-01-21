@@ -160,22 +160,36 @@ public class EmailService : IEmailService
 
     private async Task SendEmailAsync(string toEmail, string toName, string subject, string htmlBody, CancellationToken cancellationToken)
     {
+        _logger.LogInformation("Email service called. IsEnabled={IsEnabled}, SmtpHost={SmtpHost}, SmtpUser={SmtpUser}, FromEmail={FromEmail}",
+            _settings.IsEnabled,
+            _settings.SmtpHost,
+            string.IsNullOrEmpty(_settings.SmtpUser) ? "(not set)" : _settings.SmtpUser,
+            string.IsNullOrEmpty(_settings.FromEmail) ? "(not set)" : _settings.FromEmail);
+
         if (!_settings.IsEnabled)
         {
-            _logger.LogInformation(
-                "Email sending is disabled. Would have sent email to {ToEmail} with subject: {Subject}",
-                toEmail, subject);
+            _logger.LogWarning(
+                "EMAIL DISABLED: Would have sent to {ToEmail}. Set Email__IsEnabled=true in environment.",
+                toEmail);
             return;
         }
 
         if (string.IsNullOrEmpty(_settings.SmtpUser) || string.IsNullOrEmpty(_settings.SmtpPassword))
         {
-            _logger.LogWarning("Email settings not configured. Skipping email to {ToEmail}", toEmail);
+            _logger.LogWarning("Email credentials not configured. SmtpUser or SmtpPassword empty. Skipping email to {ToEmail}", toEmail);
+            return;
+        }
+
+        if (string.IsNullOrEmpty(_settings.FromEmail))
+        {
+            _logger.LogWarning("FromEmail not configured. Skipping email to {ToEmail}", toEmail);
             return;
         }
 
         try
         {
+            _logger.LogInformation("Attempting to send email via {SmtpHost}:{SmtpPort} to {ToEmail}",
+                _settings.SmtpHost, _settings.SmtpPort, toEmail);
             using var client = new SmtpClient(_settings.SmtpHost, _settings.SmtpPort)
             {
                 Credentials = new NetworkCredential(_settings.SmtpUser, _settings.SmtpPassword),
