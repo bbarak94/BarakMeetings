@@ -97,6 +97,23 @@ app.MapControllers();
 app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }))
     .WithTags("Health");
 
+// Email diagnostic endpoint (remove in production after debugging)
+app.MapGet("/health/email", (IConfiguration config) =>
+{
+    var emailSection = config.GetSection("Email");
+    return Results.Ok(new
+    {
+        isEnabled = emailSection["IsEnabled"],
+        smtpHost = emailSection["SmtpHost"],
+        smtpPort = emailSection["SmtpPort"],
+        smtpUser = string.IsNullOrEmpty(emailSection["SmtpUser"]) ? "(not set)" : emailSection["SmtpUser"]?[..Math.Min(5, emailSection["SmtpUser"]?.Length ?? 0)] + "...",
+        smtpPasswordSet = !string.IsNullOrEmpty(emailSection["SmtpPassword"]),
+        fromEmail = emailSection["FromEmail"],
+        fromName = emailSection["FromName"],
+        enableSsl = emailSection["EnableSsl"]
+    });
+}).WithTags("Health");
+
 try
 {
     Log.Information("Starting Booking Platform API");
