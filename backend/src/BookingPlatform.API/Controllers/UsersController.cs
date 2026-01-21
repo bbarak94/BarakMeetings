@@ -195,7 +195,11 @@ public class UsersController : ControllerBase
         await _context.SaveChangesAsync();
 
         // Build accept invitation URL
-        var frontendUrl = _configuration["Cors:AllowedOrigins"]?.Split(',').FirstOrDefault()?.Trim() ?? "http://localhost:5173";
+        // Check for dedicated FrontendUrl first, then fall back to CORS origins
+        var frontendUrl = _configuration["FrontendUrl"]
+            ?? _configuration["Cors:AllowedOrigins:0"]
+            ?? _configuration["Cors:AllowedOrigins"]?.Split(',').FirstOrDefault()?.Trim()
+            ?? "http://localhost:5173";
         var acceptUrl = $"{frontendUrl}/accept-invitation?token={token}";
 
         // Log invitation URL for development (always log it so it can be used when email is disabled)
@@ -277,7 +281,10 @@ public class UsersController : ControllerBase
         await _context.SaveChangesAsync();
 
         // Build accept invitation URL
-        var frontendUrl = _configuration["Cors:AllowedOrigins"]?.Split(',').FirstOrDefault()?.Trim() ?? "http://localhost:5173";
+        var frontendUrl = _configuration["FrontendUrl"]
+            ?? _configuration["Cors:AllowedOrigins:0"]
+            ?? _configuration["Cors:AllowedOrigins"]?.Split(',').FirstOrDefault()?.Trim()
+            ?? "http://localhost:5173";
         var acceptUrl = $"{frontendUrl}/accept-invitation?token={invitation.Token}";
 
         // Send invitation email

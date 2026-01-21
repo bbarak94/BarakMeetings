@@ -101,6 +101,10 @@ app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = Dat
 app.MapGet("/health/email", (IConfiguration config) =>
 {
     var emailSection = config.GetSection("Email");
+    var frontendUrl = config["FrontendUrl"]
+        ?? config["Cors:AllowedOrigins:0"]
+        ?? config["Cors:AllowedOrigins"]?.Split(',').FirstOrDefault()?.Trim()
+        ?? "http://localhost:5173";
     return Results.Ok(new
     {
         isEnabled = emailSection["IsEnabled"],
@@ -110,7 +114,8 @@ app.MapGet("/health/email", (IConfiguration config) =>
         smtpPasswordSet = !string.IsNullOrEmpty(emailSection["SmtpPassword"]),
         fromEmail = emailSection["FromEmail"],
         fromName = emailSection["FromName"],
-        enableSsl = emailSection["EnableSsl"]
+        enableSsl = emailSection["EnableSsl"],
+        frontendUrl = frontendUrl
     });
 }).WithTags("Health");
 
