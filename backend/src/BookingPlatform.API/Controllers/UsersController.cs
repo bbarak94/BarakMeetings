@@ -204,26 +204,33 @@ public class UsersController : ControllerBase
         _logger.LogInformation("{AcceptUrl}", acceptUrl);
         _logger.LogInformation("========================================");
 
-        // Send invitation email
-        try
-        {
-            await _emailService.SendInvitationLinkEmailAsync(new InvitationLinkEmailRequest(
-                ToEmail: request.Email,
-                TenantName: tenant.Name,
-                InvitedByName: $"{currentUser.FirstName} {currentUser.LastName}",
-                Role: GetRoleDisplayName(request.Role),
-                AcceptInvitationUrl: acceptUrl
-            ));
-
-            _logger.LogInformation("Invitation email sent to {Email} for tenant {TenantId}", request.Email, tenantId.Value);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to send invitation email to {Email}, but invitation was created. Use the link logged above.", request.Email);
-        }
-
         // Check if email is enabled
         var emailEnabled = _configuration.GetValue<bool>("Email:IsEnabled");
+        var emailSent = false;
+        var emailError = "";
+
+        // Send invitation email (fire and forget style, don't block the response)
+        if (emailEnabled)
+        {
+            try
+            {
+                await _emailService.SendInvitationLinkEmailAsync(new InvitationLinkEmailRequest(
+                    ToEmail: request.Email,
+                    TenantName: tenant.Name,
+                    InvitedByName: $"{currentUser.FirstName} {currentUser.LastName}",
+                    Role: GetRoleDisplayName(request.Role),
+                    AcceptInvitationUrl: acceptUrl
+                ));
+
+                emailSent = true;
+                _logger.LogInformation("Invitation email sent to {Email} for tenant {TenantId}", request.Email, tenantId.Value);
+            }
+            catch (Exception ex)
+            {
+                emailError = ex.Message;
+                _logger.LogWarning(ex, "Failed to send invitation email to {Email}, but invitation was created. Use the link logged above.", request.Email);
+            }
+        }
 
         return CreatedAtAction(nameof(GetPendingInvitations), new InvitationDto
         {
@@ -235,8 +242,10 @@ public class UsersController : ControllerBase
             InvitedByName = $"{currentUser.FirstName} {currentUser.LastName}",
             CreatedAt = invitation.CreatedAtUtc,
             ExpiresAt = invitation.ExpiresAtUtc,
-            // Include link when email is disabled (for development)
-            InvitationLink = emailEnabled ? null : acceptUrl
+            // Always include link so user can share manually if email fails
+            InvitationLink = acceptUrl,
+            EmailSent = emailSent,
+            EmailError = emailError
         });
     }
 
@@ -458,9 +467,17 @@ public record InvitationDto
     public DateTime CreatedAt { get; init; }
     public DateTime ExpiresAt { get; init; }
     /// <summary>
-    /// Invitation link - only included in development when email is disabled
+    /// Invitation link - always included so it can be shared manually
     /// </summary>
     public string? InvitationLink { get; init; }
+    /// <summary>
+    /// Whether the invitation email was sent successfully
+    /// </summary>
+    public bool EmailSent { get; init; }
+    /// <summary>
+    /// Error message if email failed to send
+    /// </summary>
+    public string? EmailError { get; init; }
 }
 
 public record InviteUserRequest(

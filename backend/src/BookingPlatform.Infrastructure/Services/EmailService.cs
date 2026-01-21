@@ -190,10 +190,12 @@ public class EmailService : IEmailService
         {
             _logger.LogInformation("Attempting to send email via {SmtpHost}:{SmtpPort} to {ToEmail}",
                 _settings.SmtpHost, _settings.SmtpPort, toEmail);
+
             using var client = new SmtpClient(_settings.SmtpHost, _settings.SmtpPort)
             {
                 Credentials = new NetworkCredential(_settings.SmtpUser, _settings.SmtpPassword),
-                EnableSsl = _settings.EnableSsl
+                EnableSsl = _settings.EnableSsl,
+                Timeout = 30000 // 30 second timeout
             };
 
             var message = new MailMessage
@@ -205,13 +207,22 @@ public class EmailService : IEmailService
             };
             message.To.Add(new MailAddress(toEmail, toName));
 
-            await client.SendMailAsync(message, cancellationToken);
+            // Use a timeout for the send operation
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            cts.CancelAfter(TimeSpan.FromSeconds(30));
+
+            await client.SendMailAsync(message, cts.Token);
 
             _logger.LogInformation("Email sent successfully to {ToEmail} with subject: {Subject}", toEmail, subject);
         }
+        catch (OperationCanceledException)
+        {
+            _logger.LogError("Email send timed out for {ToEmail} with subject: {Subject}", toEmail, subject);
+            throw new TimeoutException($"Email send timed out for {toEmail}");
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to send email to {ToEmail} with subject: {Subject}", toEmail, subject);
+            _logger.LogError(ex, "Failed to send email to {ToEmail} with subject: {Subject}. Error: {Error}", toEmail, subject, ex.Message);
             throw;
         }
     }

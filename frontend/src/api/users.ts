@@ -46,7 +46,9 @@ export interface InvitationDto {
   invitedByName: string;
   createdAt: string;
   expiresAt: string;
-  invitationLink?: string; // Only included when email is disabled (development)
+  invitationLink?: string; // Always included for manual sharing
+  emailSent?: boolean; // Whether the invitation email was sent successfully
+  emailError?: string; // Error message if email failed to send
 }
 
 export interface UpdateRoleRequest {

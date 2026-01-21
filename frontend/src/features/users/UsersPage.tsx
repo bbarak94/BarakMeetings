@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Loader2, User, Shield, X, UserCheck, UserX, Mail, RefreshCw, Trash2, Clock } from 'lucide-react';
+import { Plus, Loader2, User, Shield, X, UserCheck, UserX, Mail, RefreshCw, Trash2, Clock, Copy, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Button, Card, CardContent, CardHeader, CardTitle, Input } from '../../components/ui';
 import { usersApi, type InviteUserRequest, type InvitationDto, TenantRole, TenantRoleLabels, type TenantRoleType } from '../../api/users';
 import { useAuthStore } from '../../stores/authStore';
@@ -27,7 +27,8 @@ export function UsersPage() {
   const [inviteForm, setInviteForm] = useState<InviteFormData>(defaultInviteForm);
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
   const [newRole, setNewRole] = useState<TenantRoleType | null>(null);
-  const [inviteSent, setInviteSent] = useState(false);
+  const [inviteResult, setInviteResult] = useState<InvitationDto | null>(null);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   const { data: users, isLoading } = useQuery({
     queryKey: ['tenant-users'],
@@ -41,9 +42,9 @@ export function UsersPage() {
 
   const inviteMutation = useMutation({
     mutationFn: (data: InviteUserRequest) => usersApi.invite(data),
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['pending-invitations'] });
-      setInviteSent(true);
+      setInviteResult(result);
     },
   });
 
@@ -88,7 +89,16 @@ export function UsersPage() {
   const closeInviteModal = () => {
     setIsInviteModalOpen(false);
     setInviteForm(defaultInviteForm);
-    setInviteSent(false);
+    setInviteResult(null);
+    setLinkCopied(false);
+  };
+
+  const copyInvitationLink = async () => {
+    if (inviteResult?.invitationLink) {
+      await navigator.clipboard.writeText(inviteResult.invitationLink);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    }
   };
 
   const handleInvite = (e: React.FormEvent) => {
@@ -419,30 +429,73 @@ export function UsersPage() {
           />
           <Card className="relative z-10 w-full max-w-lg mx-4">
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>{inviteSent ? 'Invitation Sent!' : 'Invite Team Member'}</CardTitle>
+              <CardTitle>{inviteResult ? 'Invitation Created!' : 'Invite Team Member'}</CardTitle>
               <Button variant="ghost" size="sm" onClick={closeInviteModal}>
                 <X className="h-4 w-4" />
               </Button>
             </CardHeader>
             <CardContent>
-              {inviteSent ? (
+              {inviteResult ? (
                 <div className="text-center py-4">
-                  <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Mail className="h-8 w-8 text-green-600" />
+                  <div className={`w-16 h-16 ${inviteResult.emailSent ? 'bg-green-100' : 'bg-yellow-100'} rounded-full flex items-center justify-center mx-auto mb-4`}>
+                    {inviteResult.emailSent ? (
+                      <CheckCircle2 className="h-8 w-8 text-green-600" />
+                    ) : (
+                      <AlertCircle className="h-8 w-8 text-yellow-600" />
+                    )}
                   </div>
                   <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                    Invitation Sent!
+                    {inviteResult.emailSent ? 'Invitation Sent!' : 'Invitation Created'}
                   </h3>
-                  <p className="text-gray-600 dark:text-gray-400 mb-4">
-                    An email has been sent to <strong>{inviteForm.email}</strong> with instructions to join your team.
-                  </p>
+                  {inviteResult.emailSent ? (
+                    <p className="text-gray-600 dark:text-gray-400 mb-4">
+                      An email has been sent to <strong>{inviteResult.email}</strong> with instructions to join your team.
+                    </p>
+                  ) : (
+                    <div className="mb-4">
+                      <p className="text-yellow-700 dark:text-yellow-300 mb-2">
+                        Email could not be sent{inviteResult.emailError ? `: ${inviteResult.emailError}` : '.'}
+                      </p>
+                      <p className="text-gray-600 dark:text-gray-400">
+                        Share the invitation link below with <strong>{inviteResult.email}</strong>:
+                      </p>
+                    </div>
+                  )}
+
+                  {inviteResult.invitationLink && (
+                    <div className="bg-gray-100 dark:bg-gray-800 p-3 rounded-lg mb-4">
+                      <p className="text-xs text-gray-500 mb-2">Invitation Link:</p>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          readOnly
+                          value={inviteResult.invitationLink}
+                          className="flex-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 truncate"
+                        />
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={copyInvitationLink}
+                          title="Copy link"
+                        >
+                          {linkCopied ? (
+                            <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          ) : (
+                            <Copy className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
                   <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
                     The invitation will expire in 7 days.
                   </p>
                   <div className="flex justify-center gap-2">
                     <Button variant="outline" onClick={() => {
                       setInviteForm(defaultInviteForm);
-                      setInviteSent(false);
+                      setInviteResult(null);
+                      setLinkCopied(false);
                     }}>
                       Invite Another
                     </Button>
